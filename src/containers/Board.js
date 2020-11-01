@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 import Lane from '../components/Lane/Lane';
+import withDataFetching from '../withDataFetching';
 
 const BoardWrapper = styled.div`
   display: flex;
@@ -17,55 +18,62 @@ class Board extends Component {
   constructor() {
     super();
     this.state = {
-      data: [],
-      loading: true,
-      error: '',
+      tickets: [],
+    };
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.data !== this.props.data) {
+      this.setState({ tickets: this.props.data });
     }
   }
 
-  async componentDidMount() {
-    try {
-      const tickets = await fetch('../../assets/data.json');
-      const ticketsJSON = await tickets.json();
+  onDrop = (e, laneId) => {
+    const id = e.dataTransfer.getData('id');
 
-      if (ticketsJSON) {
-        this.setState({
-          data: ticketsJSON,
-          loading: false,
-        });
+    const tickets = this.state.tickets.filter(ticket => {
+      if (ticket.id === parseInt(id)) {
+        ticket.lane = laneId;
       }
-    } catch (error) {
-      this.setState({
-        loading: false,
-        error: error.message,
-      });
-    }
-  }
+
+      return ticket;
+    });
+
+    this.setState({
+      ...this.state,
+      tickets,
+    });
+  };
+
+  onDragStart = (e, id) => {
+    e.dataTransfer.setData('id', id);
+  };
+
+  onDragOver = e => {
+    e.preventDefault();
+  };
 
   render() {
-    const { data, loading, error } = this.state;
-
-    const lanes = [
-      { id: 1, title: 'To Do' },
-      { id: 2, title: 'In Progress' },
-      { id: 3, title: 'Review' },
-      { id: 4, title: 'Done' },
-    ];
+    const { lanes, loading, error } = this.props;
 
     return (
       <BoardWrapper>
-        {lanes.map(lane => (
-          <Lane 
-            key={lane.id} 
+        {lanes.map(lane =>
+          <Lane
+            key={lane.id}
+            laneId={lane.id}
             title={lane.title}
             loading={loading}
             error={error}
-            tickets={data.filter(ticket => ticket.lane === lane.id)} 
+            onDragStart={this.onDragStart}
+            onDragOver={this.onDragOver}
+            onDrop={this.onDrop}
+            tickets={this.state.tickets.filter(ticket => ticket.lane === lane.id)}
           />
-        ))}
+        )}
       </BoardWrapper>
     );
   }
 }
 
-export default Board;
+export default withDataFetching(Board);
